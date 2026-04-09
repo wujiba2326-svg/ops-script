@@ -5,9 +5,10 @@
 ################################################################################
 
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-BASE_DIR="$(cd "$(dirname "$0")" && pwd)/log_collect_${TIMESTAMP}"
+BASE_DIR="$(cd "$(dirname "$0")" && pwd)/out/log_collect_${TIMESTAMP}"
 
 LINES=20000
+COLLECTED_COUNT=0
 
 # --------------------------------------------------------------------------
 # 工具函数
@@ -49,6 +50,7 @@ collect_one() {
 
     local saved_lines
     saved_lines=$(wc -l < "$dest_file" 2>/dev/null || echo 0)
+    COLLECTED_COUNT=$((COLLECTED_COUNT + 1))
     echo "  [OK] ${service}  ${log_path}  (${saved_lines} lines)  -> ${dest_file}"
 }
 
@@ -214,10 +216,20 @@ echo "截取行数: ${LINES}"
 echo "=========================================="
 echo ""
 
+mkdir -p "${BASE_DIR}"
+
 collect_all_logs
 
 echo ""
 echo "=========================================="
 echo "收集完成，目录结构："
 echo "=========================================="
-find "${BASE_DIR}" -type f | sort | sed "s|${BASE_DIR}/||"
+if [[ "${COLLECTED_COUNT}" -eq 0 ]]; then
+    echo "未收集到任何日志文件，已创建空目录: ${BASE_DIR}"
+elif [[ -d "${BASE_DIR}" ]]; then
+    (
+        cd "${BASE_DIR}" && find . -type f | sort | sed 's|^\./||'
+    )
+else
+    echo "输出目录不存在: ${BASE_DIR}"
+fi

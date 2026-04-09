@@ -52,8 +52,15 @@ log_collect_20260409_143022/
 # 编译为当前平台
 go build -o collect_logs collect_logs.go
 
-# 交叉编译 Linux amd64（在 Windows/Mac 上构建）
+# 交叉编译 Linux amd64（Mac/Linux）
 GOOS=linux GOARCH=amd64 go build -o collect_logs collect_logs.go
+
+# 交叉编译 Linux amd64（Windows PowerShell，部署到 x86-64 服务器）
+$env:GOOS="linux"; $env:GOARCH="amd64"; go build -o file/x8664/collect_logs_linux collect_logs.go
+
+# 交叉编译 Linux arm64（Windows PowerShell，部署到 ARM64 服务器 / Apple Silicon WSL）
+$env:GOOS="linux"; $env:GOARCH="arm64"; go build -o file/arm64/collect_logs_linux collect_logs.go
+
 ```
 
 ### 使用

@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -491,26 +490,11 @@ func printTree(baseDir string) {
 	})
 }
 
-// copyFile 将 src 整个复制到 dst（用于写出自身副本，便于溯源）
-func copyFile(src, dst string) error {
-	in, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-	out, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-	_, err = io.Copy(out, in)
-	return err
-}
 
 func main() {
 	timestamp := time.Now().Format("20060102_150405")
-	exe, _ := os.Executable()
-	baseDir := filepath.Join(filepath.Dir(exe), "log_collect_"+timestamp)
+	cwd, _ := os.Getwd()
+	baseDir := filepath.Join(cwd, "out", "log_collect_"+timestamp)
 
 	fmt.Println("==========================================")
 	fmt.Println("日志收集开始")

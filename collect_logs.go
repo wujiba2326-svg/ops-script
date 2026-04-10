@@ -225,6 +225,7 @@ func discoverPHP() []string {
 	// 扫描目录
 	paths = append(paths, findFiles("/var/log", 2, []string{"*php*.log", "*fpm*.log"})...)
 	paths = append(paths, findFiles("/home/logs/fpm", 2, []string{"*.log"})...)
+	paths = append(paths, findFiles("/usr/local/php/var/log", 2, []string{"*.log"})...)
 	return paths
 }
 

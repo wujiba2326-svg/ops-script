@@ -73,7 +73,7 @@ collect_all_logs() {
     done | while IFS= read -r p; do [[ -n "$p" ]] && paths+=("$p"); done
 
     while IFS= read -r p; do [[ -n "$p" ]] && paths+=("$p"); done < <(
-        find /var/log /home/logs/fpm -maxdepth 2 \( -name "*php*.log" -o -name "*fpm*.log" -o -name "*.log" \) \
+        find /var/log /home/logs/fpm /usr/local/php/var/log -maxdepth 2 \( -name "*php*.log" -o -name "*fpm*.log" -o -name "*.log" \) \
             ! -name "*.gz" ! -name "*.bz2" ! -name "*.zip" \
             ! -name "*-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]*" \
             ! -name "*.1" ! -name "*.2" 2>/dev/null

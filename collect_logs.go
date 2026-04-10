@@ -310,6 +310,7 @@ func discoverMySQL() []string {
 	}
 
 	paths = append(paths, findFiles("/var/log", 2, []string{"*mysql*.log", "*mariadb*.log"})...)
+	paths = append(paths, findFiles("/var/log/mysql", 2, []string{"*.log"})...)
 	paths = append(paths, findFiles("/var/lib/mysql", 1, []string{"*.err"})...)
 	return paths
 }
@@ -331,6 +332,7 @@ func discoverRedis() []string {
 	}
 
 	paths = append(paths, findFiles("/var/log", 2, []string{"*redis*.log"})...)
+	paths = append(paths, findFiles("/var/log/redis", 2, []string{"*.log"})...)
 	return paths
 }
 

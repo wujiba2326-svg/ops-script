@@ -114,7 +114,7 @@ collect_all_logs() {
     done
 
     while IFS= read -r p; do [[ -n "$p" ]] && paths+=("$p"); done < <(
-        find /var/log -maxdepth 2 \( -name "*mysql*.log" -o -name "*mariadb*.log" \) \
+        find /var/log /var/log/mysql -maxdepth 2 \( -name "*mysql*.log" -o -name "*mariadb*.log" -o -name "*.log" \) \
             ! -name "*.gz" ! -name "*.bz2" \
             ! -name "*-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]*" 2>/dev/null
         find /var/lib/mysql -maxdepth 1 -name "*.err" 2>/dev/null
@@ -134,7 +134,7 @@ collect_all_logs() {
     done
 
     while IFS= read -r p; do [[ -n "$p" ]] && paths+=("$p"); done < <(
-        find /var/log -maxdepth 2 -name "*redis*.log" \
+        find /var/log /var/log/redis -maxdepth 2 -name "*.log" \
             ! -name "*.gz" ! -name "*.bz2" \
             ! -name "*-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]*" 2>/dev/null
     )

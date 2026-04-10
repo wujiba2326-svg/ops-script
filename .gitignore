@@ -1,2 +1,4 @@
 file/
-out/ 
+out/
+*.exe
+config.json

@@ -83,6 +83,81 @@ sudo ./collect_logs
 
 ---
 
+## analyze_logs.go
+
+日志智能分析工具，读取 `collect_logs` 产出的目录，逐服务发送给大模型诊断，最终输出中文汇总报告。支持 **MiniMax** 和 **Claude** 两个 provider。
+
+### 分析能力
+
+- 自动读取 `out/` 下最新的收集目录（或手动指定）
+- 按服务分组，每组单独发一次请求，针对性分析
+- 超长日志自动裁剪（取首尾各半，保留上下文，单次上限 120 000 字符）
+- 所有服务分析完后输出**全局汇总**：最严重问题、各服务健康状态、优先处理建议
+
+### Provider 说明
+
+| Provider  | 环境变量            | 默认模型             |
+| --------- | ------------------- | -------------------- |
+| `minimax` | `MINIMAX_API_KEY`   | MiniMax-Text-01      |
+| `claude`  | `CLAUDE_API_KEY`    | claude-sonnet-4-6    |
+
+### 前置条件
+
+根据使用的 provider 设置对应环境变量：
+
+```bash
+# 使用 MiniMax
+export MINIMAX_API_KEY=your_key_here
+
+# 使用 Claude
+export CLAUDE_API_KEY=sk-nPPO53MLCF5ml9KbLHjDPlIwxe1KqBgkxroK1PAH4H3PSM0P
+```
+
+### 编译 analyze_logs
+
+```bash
+go build -o analyze_logs analyze_logs.go
+```
+
+### 运行
+
+```bash
+# 使用 MiniMax（默认），自动分析 out/ 下最新目录
+./analyze_logs
+
+# 使用 Claude
+./analyze_logs --provider claude
+
+# 指定日志目录
+./analyze_logs --provider claude out/log_collect_20260410_144109
+
+# 简写
+./analyze_logs -p minimax out/log_collect_20260410_144109
+```
+
+### 输出示例
+
+```text
+分析目录: out/log_collect_20260410_144109
+
+========== 分析服务: php ==========
+- 时间范围：2025-07-23 09:28 ~ 09:59
+- 主要问题：
+  · PHP Fatal error：Composer 要求 PHP >= 8.2.0，当前为 7.4.33
+  · upstream timed out：FastCGI 连接超时
+- 建议：
+  · 将 PHP 版本升级至 8.2+，或降级对应 Composer 依赖
+  · 检查 php-fpm 进程状态及 max_children 配置
+
+========== 分析服务: nginx ==========
+...
+
+========== 全局汇总 ==========
+...
+```
+
+---
+
 ## find_log_paths.sh / collect_logs.sh
 
 ### 使用方式

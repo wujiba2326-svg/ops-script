@@ -89,8 +89,8 @@ collect_all_logs() {
     # Remi 仓库多版本 PHP
     for _ver in php73 php74 php80 php81 php82 php83; do
         while IFS= read -r p; do [[ -n "$p" ]] && paths+=("$p"); done < <(
-            find "/var/opt/remi/${_ver}/log" -maxdepth 2 -name "*.log" \
-                ! -name "*.gz" ! -name "*.bz2" \
+            find "/var/opt/remi/${_ver}/log" -maxdepth 2 -type f \
+                ! -name "*.gz" ! -name "*.bz2" ! -name "*.zip" \
                 ! -name "*-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]*" \
                 ! -name "*.1" ! -name "*.2" 2>/dev/null
         )

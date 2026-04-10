@@ -245,7 +245,7 @@ func discoverPHP() []string {
 
 	// Remi 仓库多版本 PHP（php73/php74/php80/php81/php82/php83）
 	for _, ver := range []string{"php73", "php74", "php80", "php81", "php82", "php83"} {
-		paths = append(paths, findFiles("/var/opt/remi/"+ver+"/log", 2, []string{"*.log"})...)
+		paths = append(paths, findFiles("/var/opt/remi/"+ver+"/log", 2, []string{"*"})...)
 	}
 	return paths
 }

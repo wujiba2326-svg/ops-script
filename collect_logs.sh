@@ -72,6 +72,13 @@ collect_all_logs() {
         grep -E "^error_log|^slowlog|^access.log" "$conf" 2>/dev/null | awk '{print $3}'
     done | while IFS= read -r p; do [[ -n "$p" ]] && paths+=("$p"); done
 
+    # Remi 多版本 php-fpm.d 配置目录
+    for _ver in php73 php74 php80 php81 php82 php83; do
+        find "/etc/opt/remi/${_ver}/php-fpm.d" -name "*.conf" 2>/dev/null | while read -r conf; do
+            grep -E "^error_log|^slowlog|^access.log" "$conf" 2>/dev/null | awk '{print $3}'
+        done | while IFS= read -r p; do [[ -n "$p" ]] && paths+=("$p"); done
+    done
+
     while IFS= read -r p; do [[ -n "$p" ]] && paths+=("$p"); done < <(
         find /var/log /home/logs/fpm /usr/local/php/var/log -maxdepth 2 \( -name "*php*.log" -o -name "*fpm*.log" -o -name "*.log" \) \
             ! -name "*.gz" ! -name "*.bz2" ! -name "*.zip" \

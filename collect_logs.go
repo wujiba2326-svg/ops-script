@@ -206,7 +206,7 @@ func discoverPHP() []string {
 		}
 	}
 
-	// php-fpm.conf / www.conf
+	// php-fpm.conf / www.conf（标准路径）
 	for _, confDir := range []string{"/etc"} {
 		_ = filepath.WalkDir(confDir, func(p string, d os.DirEntry, err error) error {
 			if err != nil {
@@ -214,6 +214,22 @@ func discoverPHP() []string {
 			}
 			n := d.Name()
 			if n == "php-fpm.conf" || n == "www.conf" {
+				for _, key := range []string{"error_log", "slowlog", "access.log"} {
+					paths = append(paths, grepFile(p, key, " ", 2)...)
+				}
+			}
+			return nil
+		})
+	}
+
+	// Remi 多版本 php-fpm.d 配置目录（/etc/opt/remi/<ver>/php-fpm.d/）
+	for _, ver := range []string{"php73", "php74", "php80", "php81", "php82", "php83"} {
+		confDir := "/etc/opt/remi/" + ver + "/php-fpm.d"
+		_ = filepath.WalkDir(confDir, func(p string, d os.DirEntry, err error) error {
+			if err != nil {
+				return nil
+			}
+			if !d.IsDir() && strings.HasSuffix(d.Name(), ".conf") {
 				for _, key := range []string{"error_log", "slowlog", "access.log"} {
 					paths = append(paths, grepFile(p, key, " ", 2)...)
 				}

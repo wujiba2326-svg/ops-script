@@ -1,14 +1,16 @@
 {
   "minimax": {
     "api_key": "",
-    "base_url": "https://api.minimaxi.chat/v1/text/chatcompletion_v2",
-    "model": "MiniMax-Text-01",
-    "max_tokens": 0
+    "base_url": "https://api.minimax.io/anthropic/v1/messages",
+    "model": "MiniMax-M2.7",
+    "max_tokens": 4096,
+    "protocol": "anthropic"
   },
   "claude": {
     "api_key": "",
     "base_url": "http://your-claude-proxy/v1/chat/completions",
     "model": "claude-sonnet-4-6",
-    "max_tokens": 2048
+    "max_tokens": 2048,
+    "protocol": "openai"
   }
 }

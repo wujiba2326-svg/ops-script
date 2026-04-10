@@ -20,6 +20,7 @@ type ProviderConfig struct {
 	BaseURL   string `json:"base_url"`
 	Model     string `json:"model"`
 	MaxTokens int    `json:"max_tokens"`
+	Protocol  string `json:"protocol"` // "openai" 或 "anthropic"
 }
 
 type Provider struct {
@@ -61,78 +62,139 @@ func loadProvider(name string) (Provider, error) {
 	return Provider{Name: name, ProviderConfig: cfg}, nil
 }
 
-// ===== API 结构（OpenAI 兼容） =====
+// ===== OpenAI 兼容格式 =====
 
-type Message struct {
+type OAIMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
 }
 
-type ChatRequest struct {
-	Model     string    `json:"model"`
-	Messages  []Message `json:"messages"`
-	MaxTokens int       `json:"max_tokens,omitempty"`
+type OAIRequest struct {
+	Model     string       `json:"model"`
+	Messages  []OAIMessage `json:"messages"`
+	MaxTokens int          `json:"max_tokens,omitempty"`
 }
 
-type Choice struct {
-	Message Message `json:"message"`
+type OAIResponse struct {
+	Choices []struct {
+		Message OAIMessage `json:"message"`
+	} `json:"choices"`
+	Error *struct {
+		Message string `json:"message"`
+	} `json:"error,omitempty"`
+	BaseResp *struct {
+		StatusCode int    `json:"status_code"`
+		StatusMsg  string `json:"status_msg"`
+	} `json:"base_resp,omitempty"`
 }
 
-type ChatResponse struct {
-	Choices []Choice `json:"choices"`
-	Error   *struct {
+// ===== Anthropic 格式 =====
+
+type AnthropicRequest struct {
+	Model     string             `json:"model"`
+	MaxTokens int                `json:"max_tokens"`
+	System    string             `json:"system"`
+	Messages  []AnthropicMessage `json:"messages"`
+}
+
+type AnthropicMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+type AnthropicResponse struct {
+	Content []struct {
+		Type string `json:"type"`
+		Text string `json:"text"`
+	} `json:"content"`
+	Error *struct {
 		Message string `json:"message"`
 	} `json:"error,omitempty"`
 }
 
 // ===== 发送请求 =====
 
-func callProvider(p Provider, prompt string) (string, error) {
-	req := ChatRequest{
-		Model: p.Model,
-		Messages: []Message{
-			{Role: "system", Content: "你是一个运维专家，负责分析服务器日志，找出异常、错误、性能问题，并给出简明的中文诊断报告。"},
-			{Role: "user", Content: prompt},
-		},
-	}
-	if p.MaxTokens > 0 {
-		req.MaxTokens = p.MaxTokens
-	}
+const systemPrompt = "你是一个运维专家，负责分析服务器日志，找出异常、错误、性能问题，并给出简明的中文诊断报告。"
 
-	body, err := json.Marshal(req)
+func doPost(url, apiKey string, reqBody any) ([]byte, error) {
+	body, err := json.Marshal(reqBody)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-
-	httpReq, err := http.NewRequest("POST", p.BaseURL, bytes.NewReader(body))
+	httpReq, err := http.NewRequest("POST", url, bytes.NewReader(body))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	httpReq.Header.Set("Authorization", "Bearer "+p.APIKey)
+	httpReq.Header.Set("Authorization", "Bearer "+apiKey)
 	httpReq.Header.Set("Content-Type", "application/json")
 
 	resp, err := http.DefaultClient.Do(httpReq)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer resp.Body.Close()
+	return io.ReadAll(resp.Body)
+}
 
-	data, err := io.ReadAll(resp.Body)
+func callProvider(p Provider, prompt string) (string, error) {
+	maxTok := p.MaxTokens
+	if maxTok <= 0 {
+		maxTok = 2048
+	}
+
+	if p.Protocol == "anthropic" {
+		req := AnthropicRequest{
+			Model:     p.Model,
+			MaxTokens: maxTok,
+			System:    systemPrompt,
+			Messages:  []AnthropicMessage{{Role: "user", Content: prompt}},
+		}
+		data, err := doPost(p.BaseURL, p.APIKey, req)
+		if err != nil {
+			return "", err
+		}
+		var resp AnthropicResponse
+		if err := json.Unmarshal(data, &resp); err != nil {
+			return "", fmt.Errorf("解析响应失败: %s", string(data))
+		}
+		if resp.Error != nil {
+			return "", fmt.Errorf("API 错误: %s", resp.Error.Message)
+		}
+		for _, block := range resp.Content {
+			if block.Type == "text" {
+				return block.Text, nil
+			}
+		}
+		return "", fmt.Errorf("空响应: %s", string(data))
+	}
+
+	// openai 兼容
+	req := OAIRequest{
+		Model:     p.Model,
+		MaxTokens: maxTok,
+		Messages: []OAIMessage{
+			{Role: "system", Content: systemPrompt},
+			{Role: "user", Content: prompt},
+		},
+	}
+	data, err := doPost(p.BaseURL, p.APIKey, req)
 	if err != nil {
 		return "", err
 	}
-
-	var chatResp ChatResponse
-	if err := json.Unmarshal(data, &chatResp); err != nil {
+	var resp OAIResponse
+	if err := json.Unmarshal(data, &resp); err != nil {
 		return "", fmt.Errorf("解析响应失败: %s", string(data))
 	}
-	if chatResp.Error != nil {
-		return "", fmt.Errorf("API 错误: %s", chatResp.Error.Message)
+	if resp.Error != nil {
+		return "", fmt.Errorf("API 错误: %s", resp.Error.Message)
 	}
-	if len(chatResp.Choices) == 0 {
+	if resp.BaseResp != nil && resp.BaseResp.StatusCode != 0 {
+		return "", fmt.Errorf("API 错误(%d): %s", resp.BaseResp.StatusCode, resp.BaseResp.StatusMsg)
+	}
+	if len(resp.Choices) == 0 {
 		return "", fmt.Errorf("空响应: %s", string(data))
 	}
-	return chatResp.Choices[0].Message.Content, nil
+	return resp.Choices[0].Message.Content, nil
 }
 
 // ===== 读取日志文件 =====
@@ -192,8 +254,18 @@ func main() {
 		logDir = filepath.Join("out", entries[len(entries)-1].Name())
 	}
 
+	// 报告输出路径：与日志目录同级，文件名加 _report.md
+	reportPath := logDir + "_report.md"
+
 	fmt.Printf("Provider  : %s (%s)\n", p.Name, p.Model)
-	fmt.Printf("分析目录  : %s\n\n", logDir)
+	fmt.Printf("分析目录  : %s\n", logDir)
+	fmt.Printf("报告文件  : %s\n\n", reportPath)
+
+	var report strings.Builder
+	report.WriteString(fmt.Sprintf("# 日志分析报告\n\n"))
+	report.WriteString(fmt.Sprintf("- **分析目录**: %s\n", logDir))
+	report.WriteString(fmt.Sprintf("- **Provider**: %s (%s)\n", p.Name, p.Model))
+	report.WriteString(fmt.Sprintf("- **生成时间**: %s\n\n", filepath.Base(logDir)))
 
 	// 收集所有日志文件，按服务分组
 	type logFile struct {
@@ -268,7 +340,8 @@ func main() {
 
 		fmt.Println(result)
 		fmt.Println()
-		summaries = append(summaries, fmt.Sprintf("## %s\n%s", service, result))
+		summaries = append(summaries, fmt.Sprintf("## %s\n\n%s", service, result))
+		report.WriteString(fmt.Sprintf("## %s\n\n%s\n\n", service, result))
 	}
 
 	// 全局汇总
@@ -289,6 +362,14 @@ func main() {
 			fmt.Printf("[错误] 汇总失败: %v\n", err)
 		} else {
 			fmt.Println(summary)
+			report.WriteString(fmt.Sprintf("## 全局汇总\n\n%s\n", summary))
 		}
+	}
+
+	// 写入 MD 文件
+	if err := os.WriteFile(reportPath, []byte(report.String()), 0644); err != nil {
+		fmt.Fprintf(os.Stderr, "写入报告失败: %v\n", err)
+	} else {
+		fmt.Printf("\n报告已保存: %s\n", reportPath)
 	}
 }

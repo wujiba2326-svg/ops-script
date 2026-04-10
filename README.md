@@ -110,13 +110,20 @@ sudo ./collect_logs
 export MINIMAX_API_KEY=your_key_here
 
 # 使用 Claude
-export CLAUDE_API_KEY=sk-nPPO53MLCF5ml9KbLHjDPlIwxe1KqBgkxroK1PAH4H3PSM0P
+export CLAUDE_API_KEY=your_key_here
 ```
 
 ### 编译 analyze_logs
 
 ```bash
 go build -o analyze_logs analyze_logs.go
+
+
+# 交叉编译 Linux amd64（Windows PowerShell，部署到 x86-64 服务器）
+$env:GOOS="linux"; $env:GOARCH="amd64"; go build -o file/x8664/analyze_logs analyze_logs.go
+
+# 交叉编译 Linux arm64（Windows PowerShell，部署到 ARM64 服务器 / Apple Silicon WSL）
+$env:GOOS="linux"; $env:GOARCH="arm64"; go build -o file/arm64/analyze_logs analyze_logs.go
 ```
 
 ### 运行

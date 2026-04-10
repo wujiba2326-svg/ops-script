@@ -28,6 +28,13 @@ find /var/log -maxdepth 2 \( -name "*php*.log" -o -name "*fpm*.log" \) \
     ! -name "*.2" \
     2>/dev/null
 
+# Remi 仓库多版本 PHP
+for _ver in php73 php74 php80 php81 php82 php83; do
+    find "/var/opt/remi/${_ver}/log" -maxdepth 2 -name "*.log" \
+        ! -name "*.gz" ! -name "*.bz2" ! -name "*-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]*" \
+        ! -name "*.1" ! -name "*.2" 2>/dev/null
+done
+
 # ==================== Nginx ====================
 echo ""
 echo "[Nginx]"
@@ -142,7 +149,10 @@ echo "=========================================="
     command -v php >/dev/null 2>&1 && php -i 2>/dev/null | grep "^error_log" | awk '{print $3}' | grep -v "no value"
     find /etc -name "php-fpm.conf" -o -name "www.conf" 2>/dev/null | xargs grep -hE "^error_log|^slowlog" 2>/dev/null | awk '{print $3}'
     find /var/log -maxdepth 2 \( -name "*php*.log" -o -name "*fpm*.log" \) ! -name "*.gz" ! -name "*.bz2" ! -name "*-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]*" ! -name "*.1" ! -name "*.2" 2>/dev/null
-    
+    for _ver in php73 php74 php80 php81 php82 php83; do
+        find "/var/opt/remi/${_ver}/log" -maxdepth 2 -name "*.log" ! -name "*.gz" ! -name "*.bz2" ! -name "*-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]*" ! -name "*.1" ! -name "*.2" 2>/dev/null
+    done
+
     # Nginx
     if command -v nginx >/dev/null 2>&1; then
         nginx_conf=$(nginx -V 2>&1 | grep -oE 'conf-path=[^ ]+' | cut -d= -f2 || echo "/etc/nginx/nginx.conf")
